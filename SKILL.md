@@ -5,7 +5,7 @@ description: Publish prepared novel chapters from local Markdown files to the Fa
 
 # Fanqie Publisher
 
-Use this skill to publish **chapter title +正文** from local Markdown files to the Fanqie writer backend.
+Use this skill to publish **chapter title + 正文** from local Markdown files to the Fanqie writer backend.
 
 ## Scope
 
@@ -16,20 +16,15 @@ This skill is for:
 - scheduled publish
 - saving and reusing browser login state
 
-This skill is **not** for guessing selectors blindly. If the page changes, inspect first, then update selectors in `references/selectors.md` and `scripts/publish_fanqie.js`.
+This skill is **not** for guessing selectors blindly. If the page changes, inspect first, then update `references/selectors.md` and `scripts/publish_fanqie.js`.
 
 ## Source content
 
-Current project content directory:
+Expected source content shape:
 
-```bash
-/home/amm10090/book/末日倒计时：开局强行绑定救世主/末世小说正文
-```
-
-Current chapter format observed:
-- one file = one chapter
-- filename example: `第001章_拉闸.md`
-- first line example: `# 第001章 拉闸`
+- one `.md` file = one chapter
+- filename example: `第001章_标题.md`
+- first line example: `# 第001章 标题`
 - body starts after the heading
 
 ## Files
@@ -55,7 +50,7 @@ Current chapter format observed:
 
 ```bash
 python3 skills/fanqie-publisher/scripts/prepare_chapters.py \
-  --dir "/home/amm10090/book/末日倒计时：开局强行绑定救世主/末世小说正文" \
+  --dir "/path/to/chapters" \
   --preview
 ```
 
@@ -80,7 +75,7 @@ This will open or connect to the writer backend and wait for manual QR scan / lo
 ```bash
 node skills/fanqie-publisher/scripts/publish_fanqie.js \
   --cdp http://127.0.0.1:9222 \
-  --file "/home/amm10090/book/末日倒计时：开局强行绑定救世主/末世小说正文/第001章_拉闸.md" \
+  --file "/path/to/chapters/第001章_标题.md" \
   --mode immediate \
   --fill-only
 ```
@@ -90,7 +85,7 @@ node skills/fanqie-publisher/scripts/publish_fanqie.js \
 ```bash
 node skills/fanqie-publisher/scripts/publish_fanqie.js \
   --cdp http://127.0.0.1:9222 \
-  --file "/home/amm10090/book/末日倒计时：开局强行绑定救世主/末世小说正文/第001章_拉闸.md" \
+  --file "/path/to/chapters/第001章_标题.md" \
   --mode immediate \
   --to-final-modal
 ```
@@ -100,7 +95,7 @@ node skills/fanqie-publisher/scripts/publish_fanqie.js \
 ```bash
 node skills/fanqie-publisher/scripts/publish_fanqie.js \
   --cdp http://127.0.0.1:9222 \
-  --file "/home/amm10090/book/末日倒计时：开局强行绑定救世主/末世小说正文/第001章_拉闸.md" \
+  --file "/path/to/chapters/第001章_标题.md" \
   --mode immediate \
   --confirm-publish
 ```
@@ -110,7 +105,7 @@ node skills/fanqie-publisher/scripts/publish_fanqie.js \
 ```bash
 node skills/fanqie-publisher/scripts/publish_fanqie.js \
   --cdp http://127.0.0.1:9222 \
-  --dir "/home/amm10090/book/末日倒计时：开局强行绑定救世主/末世小说正文" \
+  --dir "/path/to/chapters" \
   --start-from "第014章" \
   --limit 3 \
   --mode immediate \
@@ -122,7 +117,7 @@ Useful flags:
 - `--to-final-modal` — batch-safe stop before final publish
 - `--fill-only` — only fill the draft editor for the first selected chapter
 - `--daily-limit-chars 50000` — safety guard for suspected Fanqie daily publish ceiling
-- `--already-published-chars 47796` — today already published chars, used with the safety guard
+- `--already-published-chars 47796` — already published chars today, used with the safety guard
 - `--schedule-step-minutes 30` — for batch scheduled publish, offset each chapter by N minutes from `--schedule-at`
 
 ### 7) Schedule one chapter using Fanqie's own backend scheduling
@@ -130,7 +125,7 @@ Useful flags:
 ```bash
 node skills/fanqie-publisher/scripts/publish_fanqie.js \
   --cdp http://127.0.0.1:9222 \
-  --file "/home/amm10090/book/末日倒计时：开局强行绑定救世主/末世小说正文/第018章_废井口.md" \
+  --file "/path/to/chapters/第018章_标题.md" \
   --mode scheduled \
   --schedule-at "2026-03-13 21:00" \
   --confirm-publish
@@ -141,7 +136,7 @@ node skills/fanqie-publisher/scripts/publish_fanqie.js \
 ```bash
 node skills/fanqie-publisher/scripts/publish_fanqie.js \
   --cdp http://127.0.0.1:9222 \
-  --dir "/home/amm10090/book/末日倒计时：开局强行绑定救世主/末世小说正文" \
+  --dir "/path/to/chapters" \
   --start-from "第018章" \
   --limit 3 \
   --mode scheduled \
@@ -152,7 +147,7 @@ node skills/fanqie-publisher/scripts/publish_fanqie.js \
 
 ## Current workflow understanding
 
-Current known publish flow from the user:
+Current known publish flow:
 1. Open writer backend: `https://fanqienovel.com/main/writer/?enter_from=author_zone`
 2. Reach the chapter publishing workspace
 3. Click the top-right `下一步`
