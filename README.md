@@ -1,26 +1,33 @@
 # fanqie-publisher
 
-一个面向 **OpenClaw** 的番茄小说章节发布 Skill。
+[![Release](https://img.shields.io/github/v/release/amm10090/fanqie-publisher-skill?display_name=tag&style=flat-square)](https://github.com/amm10090/fanqie-publisher-skill/releases/tag/v0.1.0)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](./LICENSE)
+[![OpenClaw Skill](https://img.shields.io/badge/OpenClaw-Skill-blue?style=flat-square)](./SKILL.md)
+[![Playwright](https://img.shields.io/badge/Playwright-Automation-45ba4b?style=flat-square)](https://playwright.dev/)
 
-它的目标是：把本地整理好的 Markdown 章节，通过浏览器自动化方式提交到番茄作者后台，并支持单章发布、批量发布、平台原生定时发布、发布后状态校验等流程。
+> 一个面向 OpenClaw 的番茄小说发布 Skill：把本地 Markdown 章节转成可重复执行的作者后台发布流程，覆盖单章发布、批量发布、平台原生定时发布与发布后状态校验。
 
-## 项目定位
+## 简介
 
-这个仓库不是番茄官方 SDK，也不是公开 API 封装。
-它本质上是一个 **OpenClaw Skill + Playwright 自动化方案**，用于把“本地章节文件 → 番茄作者后台发布”这条重复流程工具化。
+`fanqie-publisher` 是一个以 **OpenClaw Skill** 形式组织的自动化项目，核心目标是把“本地章节文件 → 番茄作者后台发布”这条重复操作流程工具化。
 
-适合的场景：
+它不是番茄官方 SDK，也不是公开 API 封装，而是基于浏览器自动化的实战方案，适合希望保留平台原生发布链路、又想减少重复手工操作的人使用。
+
+## 适用场景
+
+适合：
 
 - 已经有结构化的章节 Markdown 文件
-- 需要减少重复的后台填表操作
-- 希望保留人工登录、平台原生发布链路
-- 希望把立即发布 / 批量发布 / 定时发布流程脚本化
+- 希望减少作者后台重复填表操作
+- 接受浏览器自动化方案
+- 希望同时支持立即发布与平台原生定时发布
+- 希望发布后自动核对章节管理页状态
 
-不适合的场景：
+不适合：
 
-- 指望官方 API 直传
-- 希望在完全无浏览器上下文的环境中运行
-- 不接受浏览器自动化方案
+- 依赖官方开放 API 的场景
+- 无法提供可接管浏览器环境的场景
+- 追求完全无 UI、纯接口式调用的场景
 
 ## 当前能力
 
@@ -35,13 +42,16 @@
 - 发布后跳转章节管理页进行状态校验
 - 通过 Playwright + CDP 接管已有浏览器会话
 - 支持安全模式（只填充 / 只走到最终发布弹窗）
+- 增加疑似单日 5 万字发布上限的保护阈值
 
-## 目录结构
+## 项目结构
 
 ```text
 fanqie-publisher/
 ├── SKILL.md
 ├── README.md
+├── LICENSE
+├── CHANGELOG.md
 ├── scripts/
 │   ├── prepare_chapters.py
 │   ├── login_fanqie.js
@@ -56,9 +66,10 @@ fanqie-publisher/
 └── .gitignore
 ```
 
-## 核心脚本说明
+## 核心脚本
 
 ### `scripts/prepare_chapters.py`
+
 负责读取章节目录中的 Markdown 文件，并输出结构化章节数据。
 
 当前默认支持的格式特征：
@@ -70,6 +81,7 @@ fanqie-publisher/
   - 标题：`标题`
 
 ### `scripts/login_fanqie.js`
+
 负责连接浏览器并保存登录态。
 
 适合场景：
@@ -78,6 +90,7 @@ fanqie-publisher/
 - 或在 WSL 中通过 CDP 接管 Windows 浏览器
 
 ### `scripts/publish_fanqie.js`
+
 主发布脚本，负责：
 
 - 打开章节编辑页
@@ -89,13 +102,13 @@ fanqie-publisher/
 
 ## 使用方式
 
-### 1. 预览章节解析结果
+### 1）预览章节解析结果
 
 ```bash
 python3 scripts/prepare_chapters.py --dir "/path/to/chapters" --preview
 ```
 
-### 2. 保存登录态
+### 2）保存登录态
 
 如果通过 CDP 接管已有浏览器：
 
@@ -103,7 +116,7 @@ python3 scripts/prepare_chapters.py --dir "/path/to/chapters" --preview
 node scripts/login_fanqie.js --cdp http://127.0.0.1:9222
 ```
 
-### 3. 单章安全填充（不发布）
+### 3）单章安全填充（不发布）
 
 ```bash
 node scripts/publish_fanqie.js \
@@ -113,7 +126,7 @@ node scripts/publish_fanqie.js \
   --fill-only
 ```
 
-### 4. 单章立即发布
+### 4）单章立即发布
 
 ```bash
 node scripts/publish_fanqie.js \
@@ -123,7 +136,7 @@ node scripts/publish_fanqie.js \
   --confirm-publish
 ```
 
-### 5. 批量立即发布
+### 5）批量立即发布
 
 ```bash
 node scripts/publish_fanqie.js \
@@ -135,7 +148,7 @@ node scripts/publish_fanqie.js \
   --confirm-publish
 ```
 
-### 6. 使用番茄后台原生定时发布
+### 6）使用番茄后台原生定时发布
 
 ```bash
 node scripts/publish_fanqie.js \
@@ -151,7 +164,7 @@ node scripts/publish_fanqie.js \
 
 ## 已知平台限制
 
-### 1. 疑似单日发布字数上限
+### 1）疑似单日发布字数上限
 
 根据真实后台行为推断，番茄存在一个大约 **50,000 字 / 日** 的实际发布上限。
 
@@ -162,7 +175,7 @@ node scripts/publish_fanqie.js \
 - `--daily-limit-chars`
 - `--already-published-chars`
 
-### 2. 定时发布的修改锁窗
+### 2）定时发布的修改锁窗
 
 如果后台提示：
 
@@ -176,7 +189,7 @@ node scripts/publish_fanqie.js \
 - 定时发布时间应尽量一次设置正确
 - 不要假设临近发布时间还能安全调整内容或时间
 
-### 3. 平台前置拦截弹窗
+### 3）平台前置拦截弹窗
 
 在点击“下一步”后，番茄后台可能出现多层中间弹窗，例如：
 
@@ -201,29 +214,28 @@ node scripts/publish_fanqie.js \
 
 这些内容应留在本地，并通过 `.gitignore` 排除。
 
-## 当前项目状态
+## 当前状态
 
 当前版本可以视为：
 
 > **可实际使用的 v0.1.0 原型**
 
-已经能完成真实发布流程，但仍然依赖：
+它已经能完成真实发布流程，但仍然依赖：
 
 - 页面结构稳定
 - 本地浏览器可接管
 - 对番茄后台交互细节的持续维护
 
-换句话说，它已经不是“概念 demo”，但也还没有到“长期免维护产品”的程度。
+换句话说，它已经不是概念 demo，但也还没有到长期免维护产品的程度。
 
-## 后续可继续完善的方向
+## 后续方向
 
 - 更稳的章节管理页状态解析
 - 对“已排定时章节”的修改流程支持
 - 更精细的错误分类和恢复策略
 - 对更多弹窗/异常态的覆盖
-- 更通用的项目配置方式（而不是靠脚本内常量）
+- 更通用的配置能力
 
-## License
+## 许可证
 
-当前仓库未单独声明开源许可证。
-如需公开分发或接受外部贡献，建议后续补充明确的 LICENSE。
+本项目采用 [MIT License](./LICENSE)。
