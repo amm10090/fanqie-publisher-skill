@@ -993,9 +993,13 @@ async function main() {
     preferredUrlPatterns: [
       DRAFT_URL,
       CHAPTER_MANAGE_URL,
+      /https?:\/\/(?:www\.)?fanqienovel\.com\/main\/writer\/chapter-manage\//i,
+      /https?:\/\/(?:www\.)?fanqienovel\.com\/main\/writer\/\d+\/publish\//i,
+      /https?:\/\/(?:www\.)?fanqienovel\.com\/main\/writer\/book-manage/i,
       /https?:\/\/(?:www\.)?fanqienovel\.com\/main\/writer\//i,
       /https?:\/\/(?:www\.)?fanqienovel\.com\//i,
     ],
+    collapseFanqieWriterTabs: true,
   });
   console.log(`发布页选择完成: reused=${reusedExistingPage} url=${page.url() || 'about:blank'}`);
 

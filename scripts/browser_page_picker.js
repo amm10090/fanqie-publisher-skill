@@ -34,6 +34,7 @@ async function resolvePage(context, options = {}) {
   const {
     preferredUrlPatterns = [],
     createIfMissing = true,
+    collapseFanqieWriterTabs = false,
   } = options;
 
   const matchers = preferredUrlPatterns.map(toMatcher);
@@ -44,6 +45,13 @@ async function resolvePage(context, options = {}) {
 
   const best = ranked[0];
   if (best && best.score > -100) {
+    if (collapseFanqieWriterTabs) {
+      for (const item of ranked) {
+        if (item.page === best.page) continue;
+        if (!isFanqieWriterPage(item.url)) continue;
+        await item.page.close({ runBeforeUnload: true }).catch(() => {});
+      }
+    }
     await best.page.bringToFront().catch(() => {});
     return {
       page: best.page,
@@ -55,6 +63,14 @@ async function resolvePage(context, options = {}) {
   if (!createIfMissing) return { page: null, reusedExistingPage: false, pageUrl: '' };
 
   const page = await context.newPage();
+  if (collapseFanqieWriterTabs) {
+    for (const other of context.pages()) {
+      if (other === page) continue;
+      const url = other.url() || '';
+      if (!isFanqieWriterPage(url)) continue;
+      await other.close({ runBeforeUnload: true }).catch(() => {});
+    }
+  }
   await page.bringToFront().catch(() => {});
   return {
     page,
