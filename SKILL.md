@@ -16,7 +16,7 @@ This skill is for:
 - scheduled publish
 - saving and reusing browser login state
 
-This skill is **not** for guessing selectors blindly. If the page changes, inspect first, then update `references/selectors.md` and `scripts/publish_fanqie.js`.
+This skill is **not** for guessing selectors blindly. If the page changes, inspect first, then update `references/selectors.md` and `{baseDir}/scripts/publish_fanqie.js`.
 
 ## Source content
 
@@ -30,8 +30,11 @@ Expected source content shape:
 ## Files
 
 - `scripts/prepare_chapters.py` — parse `.md` files into normalized chapter data
-- `scripts/login_fanqie.js` — open browser and save login state
-- `scripts/publish_fanqie.js` — publish one or more chapters with Playwright
+- `scripts/browser_page_picker.js` — pick an existing Fanqie writer tab or open a safe fallback page
+- `scripts/fanqie_login_flow.js` — shared login helpers used by the login and publish entrypoints
+- `scripts/login_fanqie.js` — open browser, detect login page, capture QR code, and save login state
+- `scripts/login_fanqie_notify.js` — wrap login flow and emit machine-readable QR/media-ready output for OpenClaw message delivery
+- `scripts/publish_fanqie.js` — publish one or more chapters with Playwright; if login expires, fall back to QR login flow
 - `scripts/state.py` — persist publish history and prevent duplicates
 - `references/workflow.md` — current known backend workflow
 - `references/selectors.md` — selectors and page reconnaissance notes
@@ -49,7 +52,7 @@ Expected source content shape:
 ### 1) Preview parsed chapters
 
 ```bash
-python3 skills/fanqie-publisher/scripts/prepare_chapters.py \
+python3 "{baseDir}/scripts/prepare_chapters.py" \
   --dir "/path/to/chapters" \
   --preview
 ```
@@ -59,21 +62,21 @@ python3 skills/fanqie-publisher/scripts/prepare_chapters.py \
 If running in WSL with a Windows browser debugging port:
 
 ```bash
-node skills/fanqie-publisher/scripts/login_fanqie.js --cdp http://127.0.0.1:9222
+node "{baseDir}/scripts/login_fanqie.js" --cdp http://127.0.0.1:9222
 ```
 
 If running with a local GUI browser on Linux:
 
 ```bash
-node skills/fanqie-publisher/scripts/login_fanqie.js
+node "{baseDir}/scripts/login_fanqie.js"
 ```
 
-This will open or connect to the writer backend and wait for manual QR scan / login completion.
+This will open or connect to the writer backend, switch to QR login when needed, save a QR screenshot to `{baseDir}/state/login-qr.png`, and wait for manual scan / login completion.
 
 ### 3) Fill a single chapter into the Fanqie editor (safe test)
 
 ```bash
-node skills/fanqie-publisher/scripts/publish_fanqie.js \
+node "{baseDir}/scripts/publish_fanqie.js" \
   --cdp http://127.0.0.1:9222 \
   --file "/path/to/chapters/第001章_标题.md" \
   --mode immediate \
@@ -83,7 +86,7 @@ node skills/fanqie-publisher/scripts/publish_fanqie.js \
 ### 4) Go all the way to the final publish modal, auto-select `AI=否`, but stop before publish
 
 ```bash
-node skills/fanqie-publisher/scripts/publish_fanqie.js \
+node "{baseDir}/scripts/publish_fanqie.js" \
   --cdp http://127.0.0.1:9222 \
   --file "/path/to/chapters/第001章_标题.md" \
   --mode immediate \
@@ -93,7 +96,7 @@ node skills/fanqie-publisher/scripts/publish_fanqie.js \
 ### 5) Immediate publish
 
 ```bash
-node skills/fanqie-publisher/scripts/publish_fanqie.js \
+node "{baseDir}/scripts/publish_fanqie.js" \
   --cdp http://127.0.0.1:9222 \
   --file "/path/to/chapters/第001章_标题.md" \
   --mode immediate \
@@ -103,7 +106,7 @@ node skills/fanqie-publisher/scripts/publish_fanqie.js \
 ### 6) Batch immediate publish from a directory
 
 ```bash
-node skills/fanqie-publisher/scripts/publish_fanqie.js \
+node "{baseDir}/scripts/publish_fanqie.js" \
   --cdp http://127.0.0.1:9222 \
   --dir "/path/to/chapters" \
   --start-from "第014章" \
@@ -113,7 +116,7 @@ node skills/fanqie-publisher/scripts/publish_fanqie.js \
 ```
 
 Useful flags:
-- `--skip-published` — skip chapters already recorded in `state/publish-state.json`
+- `--skip-published` — skip chapters already recorded in `{baseDir}/state/publish-state.json`
 - `--to-final-modal` — batch-safe stop before final publish
 - `--fill-only` — only fill the draft editor for the first selected chapter
 - `--daily-limit-chars 50000` — safety guard for suspected Fanqie daily publish ceiling
@@ -123,7 +126,7 @@ Useful flags:
 ### 7) Schedule one chapter using Fanqie's own backend scheduling
 
 ```bash
-node skills/fanqie-publisher/scripts/publish_fanqie.js \
+node "{baseDir}/scripts/publish_fanqie.js" \
   --cdp http://127.0.0.1:9222 \
   --file "/path/to/chapters/第018章_标题.md" \
   --mode scheduled \
@@ -134,7 +137,7 @@ node skills/fanqie-publisher/scripts/publish_fanqie.js \
 ### 8) Batch schedule chapters with Fanqie's own backend scheduling
 
 ```bash
-node skills/fanqie-publisher/scripts/publish_fanqie.js \
+node "{baseDir}/scripts/publish_fanqie.js" \
   --cdp http://127.0.0.1:9222 \
   --dir "/path/to/chapters" \
   --start-from "第018章" \
@@ -147,15 +150,21 @@ node skills/fanqie-publisher/scripts/publish_fanqie.js \
 
 ## Current workflow understanding
 
-Current known publish flow:
-1. Open writer backend: `https://fanqienovel.com/main/writer/?enter_from=author_zone`
-2. Reach the chapter publishing workspace
-3. Click the top-right `下一步`
-4. In the modal, choose `是否使用AI` → `否`
-5. Confirm publish
-6. For scheduled release, click `定时发布` and set date/time
+Current validated publish flow:
+1. Open chapter management for the target book
+2. Switch to the target volume on chapter management
+3. Enter `新建章节` from chapter management so the draft inherits the chosen volume
+4. Fill chapter number, title, and正文
+5. Save draft and confirm visible word count is not `0`
+6. Click the top-right `下一步`
+7. Handle typo/spellcheck modal by clicking `提交`
+8. Handle risk-detection modal by clicking `确定` when continuing publish
+9. In the final publish modal, explicitly choose `是否使用AI` → `否`
+10. For scheduled release, click `定时发布` and set date/time
+11. Click `确认发布`
+12. Return to chapter management and verify row status is `审核中` or `已发布`
 
-This is **not yet enough selector detail** for fully reliable automation. Before first real publish, inspect the exact editor page and update `references/selectors.md`.
+This flow has been validated against the live backend. Keep `references/selectors.md` in sync when the page changes.
 
 ## Rules
 

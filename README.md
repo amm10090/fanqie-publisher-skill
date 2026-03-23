@@ -82,18 +82,42 @@ fanqie-publisher/
 
 ### `scripts/login_fanqie.js`
 
-负责连接浏览器并保存登录态。
+负责连接浏览器、识别未登录状态、切到二维码登录并保存登录态。
+
+当检测到需要扫码时，会额外输出机器可读事件：
+
+- `QR_READY:/abs/path/to/login-qr.png`
+- `LOGIN_OK`
+- `LOGIN_ALREADY_OK`
+- `LOGIN_TIMEOUT`
+
+并在标准输出中包含一段可供 OpenClaw 转发的 `MEDIA:` 回复块。
+
+### `scripts/login_fanqie_notify.js`
+
+这是一个轻量包装器，用来运行 `login_fanqie.js`，并把关键结果整理成 JSON，便于上层编排逻辑读取：
+
+- 是否成功登录
+- 二维码图片路径
+- 可直接发送到聊天渠道的 `mediaReply`
 
 适合场景：
 
 - 本地有图形浏览器
 - 或在 WSL 中通过 CDP 接管 Windows 浏览器
+- 登录态过期，需要重新扫码
+
+当前会在需要扫码时自动把二维码截图保存到 `state/login-qr.png`。
+
+另外已加入二维码失效检测：优先读取页面文本判断是否出现“二维码已失效 / 点击刷新”等提示；如果系统安装了 `tesseract`，还会对登录面板截图做 OCR 兜底检测，并在需要时自动尝试刷新二维码。
 
 ### `scripts/publish_fanqie.js`
 
 主发布脚本，负责：
 
 - 打开章节编辑页
+- 自动检测登录态是否失效
+- 失效时切到二维码登录并等待重新扫码
 - 自动填充标题 / 正文
 - 处理中间拦截弹窗
 - 进入最终发布弹窗
@@ -114,6 +138,12 @@ python3 scripts/prepare_chapters.py --dir "/path/to/chapters" --preview
 
 ```bash
 node scripts/login_fanqie.js --cdp http://127.0.0.1:9222
+```
+
+如果你希望上层自动读取二维码路径和可发送附件内容：
+
+```bash
+node scripts/login_fanqie_notify.js --cdp http://127.0.0.1:9222
 ```
 
 ### 3）单章安全填充（不发布）

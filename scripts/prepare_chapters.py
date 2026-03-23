@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Dict, List
 
@@ -62,7 +63,13 @@ def parse_chapter(path: Path) -> Dict:
 
 def collect(directory: Path) -> List[Dict]:
     files = sorted([p for p in directory.iterdir() if p.is_file() and p.suffix.lower() == ".md"])
-    return [parse_chapter(p) for p in files]
+    chapters: List[Dict] = []
+    for p in files:
+        try:
+            chapters.append(parse_chapter(p))
+        except Exception as e:
+            print(f"WARN prepare_chapters skip: {p} :: {e}", file=sys.stderr)
+    return chapters
 
 
 def main() -> None:
