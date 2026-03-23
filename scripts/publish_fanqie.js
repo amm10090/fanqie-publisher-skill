@@ -816,6 +816,12 @@ async function publishOne(page, context, chapter, args, shotsDir, stateFile, sta
     : null;
   console.log(`开始处理: ${chapter.title} (${path.basename(chapter.file)})`);
 
+  const currentUrl = page.url() || '';
+  if (!/\/main\/writer\/(chapter-manage\/|\d+\/publish\/|book-manage)/i.test(currentUrl)) {
+    await page.goto(CHAPTER_MANAGE_URL, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1500);
+  }
+
   const loginCheck = await ensureLoggedIn(page, {
     qrPath,
     logger: console,

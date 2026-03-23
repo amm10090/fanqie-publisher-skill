@@ -18,6 +18,11 @@ function scorePage(page, matchers, index) {
 
   let score = index;
   if (matchers.some((matches) => matches(url))) score += 500;
+  if (/\/main\/writer\/chapter-manage\//i.test(url)) score += 350;
+  else if (/\/main\/writer\/\d+\/publish\//i.test(url)) score += 320;
+  else if (/\/main\/writer\/book-manage/i.test(url)) score += 160;
+  else if (/\/main\/writer\/data\?/i.test(url)) score -= 250;
+
   if (FANQIE_WRITER_URL_RE.test(url)) score += 200;
   else if (FANQIE_URL_RE.test(url)) score += 100;
   else if (/^https?:\/\//i.test(url)) score += 10;
