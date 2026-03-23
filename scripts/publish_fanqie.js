@@ -10,6 +10,7 @@ const BOOK_NAME = '末日倒计时：开局强行绑定救世主';
 const DRAFT_URL = `https://fanqienovel.com/main/writer/${BOOK_ID}/publish/?enter_from=newchapter_0`;
 const CHAPTER_MANAGE_URL = `https://fanqienovel.com/main/writer/chapter-manage/${BOOK_ID}&${encodeURIComponent(BOOK_NAME)}?type=1`;
 const DEFAULT_DAILY_LIMIT_CHARS = 50000; // inferred from real Fanqie backend behavior; treat as a safety guard, not an official documented rule.
+const execFileAsync = promisify(execFile);
 
 function parseArgs(argv) {
   const args = {};
@@ -111,6 +112,37 @@ function markPublished(stateFile, chapter, verify, mode) {
   savePublishState(stateFile, state);
 }
 
+async function ensureRemoteBrowserReady(cdpUrl) {
+  if (!cdpUrl || (!cdpUrl.startsWith('http://') && !cdpUrl.startsWith('https://'))) return;
+  const jsonUrl = cdpUrl.replace(/\/$/, '') + '/json/version';
+
+  const canReach = async () => {
+    try {
+      const res = await fetch(jsonUrl);
+      return !!res.ok;
+    } catch {
+      return false;
+    }
+  };
+
+  if (await canReach()) return;
+
+  const ps1 = '/home/amm10090/.openclaw/workspace-fanqie-publish/scripts/start_remote_chrome.ps1';
+  if (!fs.existsSync(ps1)) return;
+  try {
+    await execFileAsync('/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe', [
+      '-NoProfile',
+      '-ExecutionPolicy', 'Bypass',
+      '-File', `\\wsl.localhost\\Ubuntu-24.04${ps1.replace(/\//g, '\\')}`,
+    ], { timeout: 30000 });
+  } catch {}
+
+  for (let i = 0; i < 8; i++) {
+    if (await canReach()) return;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+}
+
 async function connectBrowser(args, statePath, playwright) {
   let cdpUrl = args.cdp || null;
   const { chromium } = playwright;
@@ -118,6 +150,7 @@ async function connectBrowser(args, statePath, playwright) {
   let context;
 
   if (cdpUrl) {
+    await ensureRemoteBrowserReady(cdpUrl);
     if (cdpUrl.startsWith('http://') || cdpUrl.startsWith('https://')) {
       const jsonUrl = cdpUrl.replace(/\/$/, '') + '/json/version';
       const res = await fetch(jsonUrl);

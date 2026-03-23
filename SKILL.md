@@ -34,7 +34,7 @@ Expected source content shape:
 - `scripts/fanqie_login_flow.js` — shared login helpers used by the login and publish entrypoints
 - `scripts/login_fanqie.js` — open browser, detect login page, capture QR code, and save login state
 - `scripts/login_fanqie_notify.js` — wrap login flow and emit machine-readable QR/media-ready output for OpenClaw message delivery
-- `scripts/publish_fanqie.js` — publish one or more chapters with Playwright; if login expires, fall back to QR login flow
+- `scripts/publish_fanqie.js` — publish one or more chapters with Playwright; if the `remote` browser / Windows Chrome 9222 session is not running, auto-try to restore it first; if login expires, fall back to QR login flow
 - `scripts/state.py` — persist publish history and prevent duplicates
 - `references/workflow.md` — current known backend workflow
 - `references/selectors.md` — selectors and page reconnaissance notes
