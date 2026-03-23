@@ -1,7 +1,7 @@
 # Chapter source format
 
 Observed source directory:
-- /home/amm10090/book/末日倒计时：开局强行绑定救世主/末世小说正文
+- /path/to/chapters
 
 Observed file naming:
 - 第001章_拉闸.md
