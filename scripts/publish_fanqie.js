@@ -112,6 +112,13 @@ function markPublished(stateFile, chapter, verify, mode) {
   savePublishState(stateFile, state);
 }
 
+function isRetryableFailure(result) {
+  const reason = String(result?.reason || '');
+  if (!reason) return false;
+  if (/等待扫码登录超时|单日字数上限/.test(reason)) return false;
+  return /未检测到最终发布弹窗|章节管理页未找到目标章节|弹窗仍未关闭|Target closed|Execution context was destroyed|Navigation failed|Timeout|ERR_|blocked:/.test(reason);
+}
+
 async function ensureRemoteBrowserReady(cdpUrl) {
   if (!cdpUrl || (!cdpUrl.startsWith('http://') && !cdpUrl.startsWith('https://'))) return;
   const jsonUrl = cdpUrl.replace(/\/$/, '') + '/json/version';
@@ -841,13 +848,13 @@ async function verifyPublished(page, chapter, shotsDir, prefix) {
   }, { title: displayTitle, num: expectedNum });
 }
 
-async function publishOne(page, context, chapter, args, shotsDir, stateFile, statePath, qrPath, index) {
-  const prefix = String(index + 1).padStart(2, '0');
+async function publishOneOnce(page, context, chapter, args, shotsDir, stateFile, statePath, qrPath, index, attempt = 1) {
+  const prefix = `${String(index + 1).padStart(2, '0')}-try${attempt}`;
   const mode = args.mode || 'immediate';
   const scheduleInfo = mode === 'scheduled' && args['schedule-at']
     ? resolveScheduleAt(args['schedule-at'], index, Number(args['schedule-step-minutes'] || 30))
     : null;
-  console.log(`开始处理: ${chapter.title} (${path.basename(chapter.file)})`);
+  console.log(`开始处理: ${chapter.title} (${path.basename(chapter.file)}) attempt=${attempt}`);
 
   const currentUrl = page.url() || '';
   if (!/\/main\/writer\/(chapter-manage\/|\d+\/publish\/|book-manage)/i.test(currentUrl)) {
@@ -974,6 +981,22 @@ async function publishOne(page, context, chapter, args, shotsDir, stateFile, sta
     reason: verify.found ? null : '章节管理页未找到目标章节',
     postConfirmMessages,
   };
+}
+
+async function publishOne(page, context, chapter, args, shotsDir, stateFile, statePath, qrPath, index) {
+  const first = await publishOneOnce(page, context, chapter, args, shotsDir, stateFile, statePath, qrPath, index, 1);
+  if (first.ok || !isRetryableFailure(first)) return first;
+
+  console.log(`检测到可恢复失败，准备重试一次: ${chapter.title} :: ${first.reason || 'unknown'}`);
+  try {
+    await page.goto(CHAPTER_MANAGE_URL, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2000);
+  } catch {}
+
+  const second = await publishOneOnce(page, context, chapter, args, shotsDir, stateFile, statePath, qrPath, index, 2);
+  second.retried = true;
+  second.firstFailureReason = first.reason || null;
+  return second;
 }
 
 async function main() {
