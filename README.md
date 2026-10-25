@@ -1,53 +1,18 @@
-# Fanqie Publisher Skill
+<h1 align="center">
+  <img src="./assets/fanqie-publisher-cover.png" width="1200" alt="Fanqie Publisher Skill — 本地书稿，有序连载。">
+</h1>
 
-[![Release](https://img.shields.io/github/v/release/amm10090/fanqie-publisher-skill?display_name=tag&style=flat-square)](https://github.com/amm10090/fanqie-publisher-skill/releases/latest)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](./LICENSE)
-[![OpenClaw Skill](https://img.shields.io/badge/OpenClaw-Skill-blue?style=flat-square)](./SKILL.md)
-[![Playwright](https://img.shields.io/badge/Playwright-Automation-45ba4b?style=flat-square)](https://playwright.dev/)
+## 核心能力
 
-**通过浏览器自动化（Playwright + CDP），将本地 Markdown 章节发布到番茄小说网作者后台。**
+面向已经准备好章节文件的作者，以及协助作者操作后台的 AI Agent。项目通过 Playwright 将本地 Markdown 章节填入番茄小说作者后台，核对后再发布，入口统一为 [`scripts/publish_fanqie.js`](./scripts/publish_fanqie.js)。
 
-> 本工具**并非**官方番茄小说 SDK 或公开 API 封装。后台改版可能导致自动化中断；正式发布前请务必使用安全模式验证。
+- **先看解析，再操作后台**：从 Markdown 提取章节号、标题和正文，支持本地预览。
+- **分阶段核对**：可以只填编辑器，也可以推进到最终发布弹窗；真实提交需要 `--confirm-publish` 和用户当轮明确授权。
+- **检查正文输入是否一致**：填充后回读正文，逐字符比对中文、Emoji 和换行；不一致时中止当前章节。
+- **单章起步，再批量或定时**：支持目录选章、分卷选择，以及番茄后台原生定时发布。
+- **保留本地操作记录**：保存登录态、阶段截图和章节记录；可显式开启本地记录去重。
 
-**🌐 简体中文 · [English](./README.en.md)**
-
----
-
-## 功能特性
-
-- 解析 Markdown 章节，自动拆分章节编号、标题和正文
-- 支持单章或批量发布本地目录中的章节
-- 对中文、Emoji 及 Unicode 字符提供可靠的输入支持（基于重新设计的番茄编辑器及往返读取验证）
-- 会话过期时引导二维码登录，支持浏览器会话复用
-- 即时发布及平台原生定时发布
-- 拦截并处理错词警告、内容风险检测及最终发布设置弹窗
-- 发布后返回章节管理页面，确认状态为「审核中」或「已发布」
-- 安全的 `--fill-only` 模式——仅填写编辑器字段，不提交任何内容
-- 清晰的阶段区分：预览（preview-only）→ 仅填写（fill-only）→ 到达最终弹窗（at-final-modal）→ 已提交未验证（submitted-but-unverified）→ 已验证发布（verified publication）
-
-## 平台支持
-
-| 平台 | 状态 | 入口文件 | 说明 |
-|------|------|----------|------|
-| [OpenClaw](https://github.com/openclaw/openclaw) | ✅ **已验证** | [`SKILL.md`](./SKILL.md) | 原生技能格式，含 YAML 前置元数据、命令和规则。注入的提示文件：`AGENTS.md`、`SOUL.md`、`TOOLS.md`。 |
-| [Hermes Agent](https://github.com/NousResearch/hermes-agent) | ✅ **已验证** | [`SKILL.md`](./SKILL.md)（复用） | 复用同一份 `SKILL.md`。通过 `hermes claw migrate`（官方迁移路径）导入。详见 [Hermes Agent 教程](#hermes-agent)。 |
-| [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) | ✅ **已验证** | [`CLAUDE.md`](./CLAUDE.md) | 薄适配层——引用共享的 `SKILL.md` 和 `references/` 获取业务逻辑。 |
-| [OpenAI Codex CLI](https://github.com/openai/codex) | ✅ **已验证** | [`AGENTS.md`](./AGENTS.md) | 薄适配层。所有业务逻辑来源于 `SKILL.md`、`references/` 和 `scripts/`。 |
-| [Cline](https://github.com/cline/cline) | ✅ **已验证** | [`.clinerules`](./.clinerules) | 薄适配层。所有业务逻辑来源于 `SKILL.md`、`references/` 和 `scripts/`。 |
-
-> 除 OpenClaw/Hermes 外，每个薄适配层**仅作为轻量入口**。业务逻辑、选择器和安全规则均位于 `SKILL.md`、`references/` 和 `scripts/` 中。任何适配层均不重复实现发布逻辑。
-
-## 环境要求
-
-- **Node.js** 及 npm
-- **Python 3**
-- **Chromium/Chrome** 浏览器（可通过 Playwright CDP 控制）
-- 一个具备后台访问权限的**番茄小说作者账号**
-- 首次使用前在仓库根目录执行 `npm install`
-
-> 请勿声称可以自动安装依赖或假定这些环境已自动就绪。每个依赖均需手动安装或配置。
-
-## 快速开始
+## 快速安装
 
 ```bash
 git clone https://github.com/amm10090/fanqie-publisher-skill.git
@@ -55,325 +20,223 @@ cd fanqie-publisher-skill
 npm install
 ```
 
-**基本工作流程：**
+运行前需要自行准备：
 
-1. 将章节准备为 `.md` 文件（一个文件 = 一个章节）
-2. 预览解析结果：`python3 scripts/prepare_chapters.py --dir "/path/to/chapters" --preview`
-3. 通过 CDP 连接已登录的浏览器：`node scripts/login_fanqie.js --cdp http://127.0.0.1:9222`
-4. 安全填充测试：`node scripts/publish_fanqie.js --cdp http://127.0.0.1:9222 --file "/path/to/chapter.md" --mode immediate --fill-only`
-5. 验证内容和页面状态无误后，先获得用户当轮明确确认，再**移除 `--fill-only`**并添加 `--confirm-publish` 进行真实发布
+- Node.js 与 npm；脚本使用 Node.js 内置的 `fetch`。
+- Python 3，用于解析章节。
+- 可通过 CDP 连接的 Chromium / Chrome 浏览器。
+- 能访问目标作品后台的番茄小说作者账号；需要登录时由本人扫码。
 
-## 章节格式
+下文命令均在仓库根目录执行。`npm install` 安装项目依赖，不会替你启动浏览器、开启调试端口或完成登录。
 
-每个 `.md` 文件代表一个章节：
+## 快速开始
 
-```text
-第001章_标题.md
+先完成单章预览和填充，再决定是否发布。示例中的 `/path/to/chapters` 请替换为自己的**绝对路径**。
 
-# 第001章 标题
+### 1. 准备章节并预览
 
-正文第一段。
+一份 `.md` 文件对应一章，使用 **UTF-8、无 BOM** 编码。文件名建议统一补零，例如 `第001章_启程.md`，内容如下：
 
-第二段。
+```markdown
+# 第001章 启程
+
+天亮时，他推开了门。
+
+街道尽头，第一班车正在等候。
 ```
 
-解析器会将第一个 Markdown 标题从正文中剥离，将 `第001章 标题` 拆分为序号 `1` 和显示标题 `标题`，并填入番茄编辑器对应字段。序号中的前导零在实际数值输入时会被移除。
+```bash
+python3 scripts/prepare_chapters.py \
+  --dir "/path/to/chapters" \
+  --preview
+```
 
-## 平台教程
+对上述示例，预览会列出 `第001章 启程`，正文字符数为 `26`。解析器优先使用文件第一行的一级标题；没有该标题时从文件名推导。填入后台时，章节号为 `1`，显示标题为 `启程`，首行标题不进入正文。
 
-### OpenClaw
+目录只读取当前层的 Markdown 文件，并按文件名排序，不递归子目录。正文按纯文本处理，不负责将 Markdown 标记转换为富文本样式。预览中的“字数”按正文字符数计算，包含正文中的空白和换行，不等同于后台计数。
 
-将克隆后的仓库目录放入 OpenClaw 工作区的 skills 文件夹中，或将 OpenClaw 指向此目录。[`SKILL.md`](./SKILL.md) 文件作为完整的技能定义，包含：
+### 2. 配置目标作品，再连接浏览器
 
-- YAML 前置元数据（`name`、`description`），用于自动技能发现
-- 完整的 `commands` 部分，涵盖所有入口点
-- `rules` 部分，包含安全上限、登录处理和平台限制
-- 经过验证的逐步发布工作流
+**当前版本的目标作品写在源码中。** 首次连接前，检查 [`scripts/publish_fanqie.js`](./scripts/publish_fanqie.js) 顶部的 `BOOK_ID` 和 `BOOK_NAME`，改为自己的作品；`DRAFT_URL` 与 `CHAPTER_MANAGE_URL` 由它们生成。当前没有 `--book-id` 或 `--book-name` 命令参数。
 
-OpenClaw 还会在工作区级别注入 `AGENTS.md`、`SOUL.md` 和 `TOOLS.md` 作为全局提示文件。
+启动自己的 Chromium / Chrome，并准备可访问的 CDP 地址。以下示例使用 `http://127.0.0.1:9222`；如果使用其他地址，应在登录和发布命令中保持一致。调试端口只向可信本机环境开放。
 
 ```bash
-# 技能加载后，可用的命令：
-python3 scripts/prepare_chapters.py --dir "/path/to/chapters" --preview
 node scripts/login_fanqie.js --cdp http://127.0.0.1:9222
-node scripts/publish_fanqie.js --cdp http://127.0.0.1:9222 --file "/path/to/chapter.md" --mode immediate --fill-only
 ```
 
-关于批量发布、定时发布、分卷选择和重试，请阅读 [`SKILL.md`](./SKILL.md)。
+脚本连接浏览器；需要登录时切换到二维码流程，等待人工扫码。登录态保存在 `state/fanqie-storage-state.json`，二维码截图保存在 `state/login-qr.png`。若当前会话已登录，则刷新保存登录态。
 
----
-
-### Hermes Agent
-
-Hermes Agent 使用与 OpenClaw **相同的 `SKILL.md`** 文件。通过官方迁移命令导入。
-
-#### 前提条件
-
-- 已安装 Hermes Agent（官方仓库：[NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent)）
-- 已在本地检出此仓库
-
-#### 迁移路径（官方方式）
-
-Hermes 提供 `hermes claw migrate` 命令，用于将 OpenClaw 技能导入到 `~/.hermes/skills/openclaw-imports/`。其 `--source` 选项需要一个 **OpenClaw 根目录**，而非直接指向此仓库。
-
-**步骤 1 — 检查命令和 dry-run 标志：**
-
-```bash
-hermes claw migrate --help
-```
-
-应显示 `--source` 指向一个 OpenClaw 目录路径，以及 `--dry-run` 的描述为「仅预览——展示将要迁移的内容后停止」。
-
-**步骤 2 — 将此仓库组装为 OpenClaw 兼容的源目录布局：**
-
-在仓库根目录下执行以下命令：
-
-```bash
-OPENCLAW_SOURCE="$(mktemp -d "${TMPDIR:-/tmp}/fanqie-openclaw-source-XXXXXX")"
-SKILL_SOURCE="$OPENCLAW_SOURCE/workspace/skills/fanqie-publisher"
-mkdir -p "$SKILL_SOURCE"
-cp SKILL.md package.json "$SKILL_SOURCE/"
-cp -R references scripts "$SKILL_SOURCE/"
-```
-
-此操作仅将技能定义和共享运行时文件复制到临时源目录中。不会复制 `.git`、`state/`、登录令牌、截图或章节文件。
-
-**步骤 3 — 使用 `--dry-run` 预览迁移：**
-
-```bash
-hermes claw migrate --source "$OPENCLAW_SOURCE" --dry-run
-```
-
-dry-run 输出将列出将被迁移和将被跳过的内容。**在进行任何更改之前务必仔细检查。** 源路径必须解析为临时的 OpenClaw 根目录，而计划的技能目标应为 `~/.hermes/skills/openclaw-imports/fanqie-publisher/`。
-
-**步骤 4 — 确认预览结果后执行实际迁移：**
-
-```bash
-hermes claw migrate --source "$OPENCLAW_SOURCE"
-```
-
-迁移成功后，验证已导入的文件，如果你不再需要临时目录，可以删除 `OPENCLAW_SOURCE` 中存储的临时目录。切勿在递归清理命令中使用未经核实的路径。
-
-**⚠️ 重要安全提示：**
-- **务必先执行 `--dry-run`**，检查输出后再进行任何实际迁移
-- 迁移仅导入 `SKILL.md`、`package.json`、`references/` 和 `scripts/`——**不会**复制 `.git`、`state/`、登录令牌或用户章节文件
-- 实际的 `publish_fanqie.js` 脚本在迁移过程中**不会执行**——仅进行文件复制
-- **保护你的真实配置**：如在隔离环境中测试，务必确认你的真实 `~/.hermes` 和 `~/.openclaw` 目录绝不会被用作迁移目标。保护用户真实数据是最优先事项。
-- 迁移后，`~/.hermes/skills/openclaw-imports/fanqie-publisher/` 中的技能包含指向 `references/` 和 `scripts/` 的有效相对引用
-
-**在 Hermes 中加载后，使用相同的命令：**
-
-```bash
-python3 scripts/prepare_chapters.py --dir "/path/to/chapters" --preview
-node scripts/login_fanqie.js --cdp http://127.0.0.1:9222
-node scripts/publish_fanqie.js --cdp http://127.0.0.1:9222 --file "/path/to/chapter.md" --mode immediate --fill-only
-```
-
----
-
-### Claude Code
-
-Claude Code 从项目根目录读取 [`CLAUDE.md`](./CLAUDE.md)。该薄适配层指导 Claude：
-
-1. 读取 `SKILL.md`、`references/workflow.md`、`references/selectors.md` 和 `scripts/publish_fanqie.js`（仅标志说明）
-2. 使用来自 `SKILL.md` 入口点的共享命令
-3. 遵循相同的安全规则（每天 50,000 字符上限、定时编辑 30 分钟窗口、显式设置 `是否使用AI → 否`）
-
-```bash
-# 预览章节解析
-python3 scripts/prepare_chapters.py --dir "/path/to/chapters" --preview
-
-# 登录或重连
-node scripts/login_fanqie.js --cdp http://127.0.0.1:9222
-
-# 安全填充测试
-node scripts/publish_fanqie.js --cdp http://127.0.0.1:9222 --file "/path/to/chapter.md" --mode immediate --fill-only
-```
-
-真实发布时，使用相同的已审查参数，**移除 `--fill-only`**，添加 `--confirm-publish`。
-
----
-
-### Codex CLI
-
-Codex CLI 从项目根目录读取 [`AGENTS.md`](./AGENTS.md)。该薄适配层：
-
-- 引用 `SKILL.md` 获取所有业务逻辑和安全规则
-- 引用 `references/` 获取选择器和工作流详情
-- 引用 `scripts/publish_fanqie.js` 作为唯一的发布入口
-- **不会**声称自动安装、自动登录或绕过人工确认
-
-**命令与其他平台相同：**
-
-```bash
-# 语法检查及编辑器测试
-npm run test:all
-
-# 预览章节
-python3 scripts/prepare_chapters.py --dir "/path/to/chapters" --preview
-
-# 登录
-node scripts/login_fanqie.js --cdp http://127.0.0.1:9222
-
-# 安全填充
-node scripts/publish_fanqie.js --cdp http://127.0.0.1:9222 --file "/path/to/chapter.md" --mode immediate --fill-only
-```
-
----
-
-### Cline
-
-Cline 从项目根目录读取 [`.clinerules`](./.clinerules)。该薄适配层遵循相同设计：引用共享文件，使用共享命令，强制执行共享安全规则。
-
-**命令：**
-
-```bash
-python3 scripts/prepare_chapters.py --dir "/path/to/chapters" --preview
-node scripts/login_fanqie.js --cdp http://127.0.0.1:9222
-node scripts/publish_fanqie.js --cdp http://127.0.0.1:9222 --file "/path/to/chapter.md" --mode immediate --fill-only
-```
-
-**真实发布示例（注意：移除了 `--fill-only`，不得与 `--confirm-publish` 同时使用）：**
+### 3. 只填充一章，不提交发布
 
 ```bash
 node scripts/publish_fanqie.js \
   --cdp http://127.0.0.1:9222 \
-  --file "/path/to/chapter.md" \
+  --file "/path/to/chapters/第001章_启程.md" \
+  --mode immediate \
+  --fill-only
+```
+
+`--fill-only` 会实际填写章节号、标题和正文，但不点击“下一步”或“确认发布”。请在浏览器中核对目标作品、章节号、标题、完整正文、分卷和页面状态；需要指定分卷时，在这一步就加入 `--volume "目标分卷名"`。
+
+填充会改写编辑器内容，应使用专门的新草稿。批量操作前，先目视检查这一章；仅查看终端输出不能替代页面核对。
+
+## 从最终弹窗到正式发布
+
+### 先核对最终发布设置
+
+将上一条命令中的 `--fill-only` **替换为** `--to-final-modal`：
+
+```bash
+node scripts/publish_fanqie.js \
+  --cdp http://127.0.0.1:9222 \
+  --file "/path/to/chapters/第001章_启程.md" \
+  --mode immediate \
+  --to-final-modal
+```
+
+该模式会推进“下一步”及中间弹窗，尝试将“是否使用AI”设为“否”，成功后停在最终发布弹窗，不点击“确认发布”。核对分卷、章节标题和 AI 选项。
+
+对于定时模式，这个停止点位于定时控件填写之前：到达弹窗不代表定时时间已经设置。
+
+### 获得当轮授权后再提交
+
+用户明确确认本轮的章节、作品、分卷和发布方式后，保留已核对的参数，移除停止标志，加入 `--confirm-publish`：
+
+```bash
+node scripts/publish_fanqie.js \
+  --cdp http://127.0.0.1:9222 \
+  --file "/path/to/chapters/第001章_启程.md" \
   --mode immediate \
   --confirm-publish
 ```
 
-## 安全发布工作流
+不要将 `--confirm-publish` 与 `--fill-only` 或 `--to-final-modal` 混用。每次执行命令都会重新进入处理流程，并非接着上一次停留的弹窗继续。
 
-请始终按以下阶段推进，切勿跳过步骤。
+### 以章节管理页作为发布核验依据
 
-### 阶段 1：仅预览（Preview Only）
-```bash
-python3 scripts/prepare_chapters.py --dir "/path/to/chapters" --preview
-```
-验证章节编号、标题和正文是否解析正确。
+“确认发布”点击后，回到章节管理并刷新，确认目标章节行存在，且状态为“审核中”或“已发布”。“审核中”表示已提交待审，不代表审核通过或已对读者可见。
 
-### 阶段 2：仅填写（Fill Only，安全模式）
-```bash
-node scripts/publish_fanqie.js --cdp http://127.0.0.1:9222 --file "/path/to/chapter.md" --mode immediate --fill-only
-```
-编辑器中的字段被填写。**不提交任何内容。** 验证章节编号、标题、正文、分卷选择和页面状态。
+**当前汇总有一项限制：** `BATCH_SUMMARY` 中的 `publishedVerified` 按“找到目标章节行”计数，代码未强制检查该行状态是否属于上述两种。因此，不能单凭 `ok: true`、计数增加或本地记录判定发布成功，仍需核对管理页实际状态。
 
-### 阶段 3：到达最终弹窗（At Final Modal）
-使用 `--fill-only` 时，脚本会填写字段并依次通过错词/风险检测弹窗，最终到达发布确认对话框前停止，**不会点击「确认发布」**。这确认了所有中间关卡均可通行。
+## 批量与定时发布
 
-### 阶段 4：已提交未验证（Submitted But Unverified）
-使用 `--confirm-publish` 进行真实发布后，提交按钮已点击，但**尚未检查管理页面**。这不代表验证成功。
+### 批量即时发布
 
-### 阶段 5：已验证发布（Verified Publication）✅
-脚本返回章节管理页面，确认目标行存在且状态为「审核中」或「已发布」。仅此阶段确认发布成功。
-
-> **正确真实发布示例：** 使用与填充测试相同的参数，**移除 `--fill-only`**，并添加 `--confirm-publish`。请**勿**同时使用 `--fill-only` 和 `--confirm-publish`。
-
-## 安全边界
-
-- 在任何真实发布之前，先测试单章或使用 `--fill-only`
-- 提交前验证目标作品、分卷、章节编号、标题和正文
-- **每天 50,000 字符**是实用的安全上限（并非官方配额）
-- 定时章节在发布前约 **30 分钟**变为**不可编辑**——请勿在此时尝试最后的修改
-- 切勿提交登录令牌、浏览器会话、截图、二维码或临时状态文件
-- 番茄小说后台更新时选择器会变动——在使用前检查，不要假设选择器一直稳定
-- 在最终发布弹窗中，**始终将「是否使用AI」设置为「否」**
-
-## 故障排查
-
-### 中文 / Emoji / Unicode 输入问题
-
-重新设计的番茄编辑器对非 ASCII 字符需要特殊处理：
-
-- 脚本采用**逐字符输入**加**往返读取验证**的方式处理中文、Emoji 和特殊 Unicode 字符
-- 如果输入验证失败，脚本会报告 `input-validation-failed`——请修正原文后重试，不要将其报告为发布成功
-- 空的编辑器装饰节点会被自动处理；如果正文字段无响应，请先确认编辑器已完全加载后再填写
-
-### 登录问题
-
-- 如果会话过期，脚本会引导你进行**二维码登录**（需手动扫码）
-- 使用 `node scripts/login_fanqie.js --cdp http://127.0.0.1:9222` 重新连接
-- 对于需要获取二维码路径的程序，请改用 `scripts/login_fanqie_notify.js`
-- **不执行自动登录**——始终需要人工与二维码交互
-
-### 选择器 / 页面状态问题
-
-如果某一步意外失败：
-
-1. 手动检查当前页面状态
-2. 查看 [`references/selectors.md`](./references/selectors.md) 获取最新的语义选择器
-3. 查看 [`references/workflow.md`](./references/workflow.md) 获取已验证的发布流程
-4. 查看 [`references/editor-recon.md`](./references/editor-recon.md) 获取编辑器探查笔记
-5. 如果后台发生变更，更新 `scripts/publish_fanqie.js` 中的选择器
-
-### 弹窗 / 对话框处理
-
-发布流程中可能遇到以下几种中间对话框：
-
-| 对话框 | 触发条件 | 操作 |
-|--------|----------|------|
-| 错词/拼写检查警告 | 点击「下一步」后 | 点击「提交」继续 |
-| 内容风险检测 | 错词检查通过后 | 点击「确定」继续 |
-| 引导/新手教程 | 首次进入编辑器 | 尝试「知道了」/「我知道了」/「下一步」/「跳过」 |
-| 最终发布设置 | 提交之前 | 将「是否使用AI」设为「否」，选择即时或定时发布，点击「确认发布」 |
-
-## 常见问题
-
-**问：支持定时发布吗？**
-答：支持——使用 `--mode schedule` 配合 `--scheduled-time`。此功能通过番茄后台原生定时发布界面实现，而非外部 cron 任务。
-
-**问：可以一次发布多个章节吗？**
-答：可以——使用 `--dir` 替代 `--file`，还可选配 `--volume` 进行分卷选择。
-
-**问：超过每日限制会怎样？**
-答：脚本以每天 50,000 字符作为实用的安全上限。在高产量日，可传入 `--already-published-chars` 让脚本在接近疑似上限时停止。
-
-**问：番茄后台改版后还能用吗？**
-答：自动化依赖 CSS 选择器和 DOM 结构。后台改版可能破坏特定选择器——请更新 `references/selectors.md` 并使用 `--fill-only` 先行测试。
-
-**问：可以不打开浏览器使用吗？**
-答：不行——需要通过 CDP 控制的 Chromium/Chrome 浏览器会话是必需的。
-
-## 参考文件
-
-| 文件 | 用途 |
-|------|------|
-| [`SKILL.md`](./SKILL.md) | 完整的技能定义、命令、安全规则和发布流程 |
-| [`references/workflow.md`](./references/workflow.md) | 经过验证的逐步发布工作流 |
-| [`references/selectors.md`](./references/selectors.md) | 番茄后台页面的语义 CSS 选择器 |
-| [`references/editor-recon.md`](./references/editor-recon.md) | 编辑器探查及弹窗处理笔记 |
-| [`references/data-format.md`](./references/data-format.md) | 章节源文件格式规范 |
-| [`scripts/publish_fanqie.js`](./scripts/publish_fanqie.js) | 主发布入口（单一事实来源） |
-| [`scripts/prepare_chapters.py`](./scripts/prepare_chapters.py) | Markdown 章节解析器及预览 |
-| [`scripts/login_fanqie.js`](./scripts/login_fanqie.js) | 登录与会话管理 |
-| [`scripts/editor_input.js`](./scripts/editor_input.js) | Unicode 输入及往返读取验证 |
-| [`CHANGELOG.md`](./CHANGELOG.md) | 发布历史 |
-
-## 开发与测试
+先预览整个目录，核对顺序和起始章节；完成单章页面核对并获得本轮批量授权后，再执行：
 
 ```bash
-npm run test:all
+node scripts/publish_fanqie.js \
+  --cdp http://127.0.0.1:9222 \
+  --dir "/path/to/chapters" \
+  --start-from "第014章" \
+  --limit 3 \
+  --mode immediate \
+  --skip-published \
+  --confirm-publish
 ```
 
-执行 JavaScript 语法检查及编辑器输入测试。核心源文件：
+`--start-from` 在文件名或标题中做子串匹配；**找不到时不会报错，而会从目录开头处理**。执行前必须从预览确认起点存在。首次批量建议保留较小的 `--limit`。
 
-- `scripts/publish_fanqie.js` —— 发布主流程
-- `scripts/editor_input.js` —— Unicode 输入及读取验证
-- `scripts/login_fanqie.js` —— 登录与会话管理
-- `scripts/prepare_chapters.py` —— Markdown 章节解析
+### 使用番茄后台原生定时发布
 
-## 贡献指南
+以下命令中的时间仅展示输入格式；执行前替换为用户确认的未来时间，并核对后台显示的日期和时间：
 
-欢迎贡献。请遵循以下准则：
+```bash
+node scripts/publish_fanqie.js \
+  --cdp http://127.0.0.1:9222 \
+  --file "/path/to/chapters/第018章_启程.md" \
+  --mode scheduled \
+  --schedule-at "2026-11-01 21:00" \
+  --confirm-publish
+```
 
-1. 先提交 issue 讨论变更
-2. 保持薄适配层的轻量化——业务逻辑应放在 `SKILL.md`、`references/` 和 `scripts/` 中
-3. 番茄后台变更时更新 `references/selectors.md`
-4. 所有变更在提交前使用 `--fill-only` 测试
-5. 不要提交登录令牌、浏览器会话、截图或用户数据
-6. 保持 UTF-8 编码；编辑器变更后测试中文和 Emoji 输入
+正确参数是 `--mode scheduled` 与 `--schedule-at`。脚本通过后台定时控件提交，不依赖外部 cron。输入不含时区，脚本按运行环境本地时间解析；它不会自动转换到作者后台的时区。
+
+批量定时可将 `--file` 替换为 `--dir`，加入起点、数量和 `--schedule-step-minutes 30`，让后续章节依次间隔 30 分钟。每章都需核对管理页中的排程信息；排入队列不等于已经到时发布。
+
+### 常用参数
+
+| 参数 | 用途与边界 |
+| --- | --- |
+| `--file` / `--dir` | 选择单个章节或目录；使用绝对路径，二选一 |
+| `--volume "分卷名"` | 从章节管理页选择分卷后新建章节；分卷应已存在 |
+| `--start-from "第014章"` | 从匹配文件名或标题的章节开始，未匹配会从头处理 |
+| `--limit 3` | 限制本轮候选章节数量 |
+| `--skip-published` | 跳过本地章节记录中已存在的文件路径，不会查询后台去重 |
+| `--daily-limit-chars 50000` | 即时模式的本轮累计字符数保护阈值，默认 50,000 |
+| `--already-published-chars 12000` | 人工提供今天已发字符数，与保护阈值合用 |
+| `--schedule-step-minutes 30` | 批量定时的逐章间隔，默认 30 分钟 |
+
+停止模式和正式发布标志见上文。完整命令与流程说明见 [`SKILL.md`](./SKILL.md)，实际参数行为以发布脚本为准。
+
+## 如何报告执行结果
+
+以下名称用于区分操作阶段，不是脚本统一返回的状态枚举：
+
+| 结果 | 判定依据 |
+| --- | --- |
+| `preview-only` | 只显示本地章节解析结果，未操作后台 |
+| `fill-only` | 编辑器已填写，未提交发布 |
+| `to-final-modal` | 到达最终发布弹窗，未点击“确认发布” |
+| `submitted-unverified` | 已点击提交，但缺少目标章节行或预期状态的管理页证据 |
+| `published-verified` | 提交后刷新管理页，目标行存在且状态为“审核中”或“已发布” |
+| `login-expired-or-timeout` | 会话失效或扫码超时，需要重新登录 |
+| `input-validation-failed` | 正文回读不一致或输入校验失败，应修正后再继续 |
+| `error` | 缺少依赖、连接失败、页面异常或其他未完成的错误 |
+
+## 安全边界与本地记录
+
+- **授权按轮次确认。** 预览、填充或到达弹窗，都不构成真实发布授权；正式发布必须得到当前用户当轮明确确认。
+- **字符上限是操作保护。** 50,000 字符/日来自项目操作经验，不是官方配额；当前保护只应用于 `immediate` 模式，也不会自动读取账号今天已发的字数。
+- **定时修改要留出余量。** 项目记录过后台提示“请在发布时间前30分钟提交修改内容，否则无法完成修改”。遇到该提示，应将该章节视为已进入不可安全修改的窗口。
+- **选择器随后台变化。** 页面结构变化时先检查真实页面，再更新共享选择器和脚本，重新进行单章填充核对。
+
+运行时文件都保存在本地 `state/` 下，该目录已加入 `.gitignore`：
+
+| 路径 | 内容 |
+| --- | --- |
+| `state/fanqie-storage-state.json` | 可复用的浏览器登录态，按敏感凭据保护 |
+| `state/login-qr.png` | 扫码登录二维码截图 |
+| `state/publish-state.json` | 章节记录；当前实现找到目标行后即记录 |
+| `state/screenshots/` | 填充、弹窗及发布后管理页等阶段截图 |
+
+不要提交或公开登录态、二维码、用户章节及后台截图。本地去重以文件路径为依据，移动文件或换用另一份状态记录后，应重新核对后台已有章节。
+
+## 接入 AI Agent
+
+仓库提供以下指导入口，共享同一套章节解析、登录和发布脚本：
+
+| 使用环境 | 入口 |
+| --- | --- |
+| OpenClaw / Hermes Agent | [`SKILL.md`](./SKILL.md) 技能定义 |
+| Claude Code | [`CLAUDE.md`](./CLAUDE.md) 项目适配说明 |
+| Codex CLI | [`AGENTS.md`](./AGENTS.md) 项目适配说明 |
+| Cline | [`.clinerules`](./.clinerules) 项目适配说明 |
+
+将所用 Agent 指向对应入口，并让它先读取共享工作流和安全规则。接入指导文件后，依赖、浏览器连接、人工扫码和发布确认仍需分别完成。
+
+## 遇到问题时
+
+**连接失败或缺少登录态**：先确认 CDP 地址和浏览器调试端口可访问，再运行 `node scripts/login_fanqie.js --cdp http://127.0.0.1:9222`。登录脚本默认连接该地址，并不自动启动浏览器。
+
+**出现 `Unicode 一致性校验失败`**：查看原文编码和回读差异，结合编辑器截图检查中文、Emoji、空行和段落；修正后重新填充，不能将失败降格为成功。
+
+**分卷或弹窗不符合预期**：暂停当前流程，核对作品配置和当前页面，查看[分卷与发布工作流](./references/workflow.md)及[选择器说明](./references/selectors.md)。需要指定分卷时，通过 `--volume` 走“章节管理 → 选分卷 → 新建章节”路径。
+
+**提交后未找到章节**：先去管理页查询，不要直接重跑。脚本对部分页面状态错误会自动重试一次；缺少核验结果时，仍有重复提交风险。
+
+## 按任务查阅文档
+
+| 想做什么 | 阅读入口 |
+| --- | --- |
+| 查看完整技能规则与批量命令 | [`SKILL.md`](./SKILL.md) |
+| 理解章节命名、标题拆分与正文处理 | [`references/data-format.md`](./references/data-format.md) |
+| 核对分卷、拦截弹窗和最终发布步骤 | [`references/workflow.md`](./references/workflow.md) |
+| 处理后台改版或元素定位问题 | [`references/selectors.md`](./references/selectors.md) |
+| 排查编辑器输入与页面结构 | [`references/editor-recon.md`](./references/editor-recon.md) |
+| 确认发布参数及当前实现 | [`scripts/publish_fanqie.js`](./scripts/publish_fanqie.js) |
 
 ## 许可证
 
-[MIT](./LICENSE)
+本项目采用 [MIT 许可证](./LICENSE)。
